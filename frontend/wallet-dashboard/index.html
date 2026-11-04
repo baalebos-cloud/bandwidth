@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My earnings</title>
+<style>
+  :root{
+    --bg:#FAF7F1; --card:#FFFFFF; --ink:#20241F; --muted:#6E766D;
+    --teal:#0F6E5C; --teal-dark:#0B5245; --gold:#DFA526; --gold-dark:#B98314;
+    --line:#EAE4D6; --ok-bg:#E7F3EC; --ok:#1F7A57; --sans:'DM Sans','General Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  .app{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);padding:0 0 40px;}
+  header{padding:22px 20px 0;}
+  header .greet{font-size:14px;color:var(--muted);}
+  .hero{margin:14px 20px 22px;background:linear-gradient(160deg,var(--teal) 0%,var(--teal-dark) 100%);border-radius:20px;padding:26px 22px 22px;color:#fff;}
+  .hero .label{font-size:13px;opacity:.8;margin-bottom:6px;}
+  .hero .amount{font-size:40px;font-weight:700;letter-spacing:-0.5px;line-height:1;}
+  .hero .amount small{font-size:18px;font-weight:500;opacity:.85;margin-left:4px;}
+  .hero .meta{margin-top:14px;display:flex;gap:18px;font-size:12.5px;opacity:.85;}
+  .hero .meta b{display:block;font-size:15px;font-weight:600;opacity:1;}
+  section{margin:0 20px 22px;}
+  section h2{font-size:14px;font-weight:600;margin:0 0 10px;}
+  .redeem-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .redeem-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;text-align:left;font:inherit;}
+  .redeem-card:hover{border-color:var(--gold);}
+  .redeem-card .icon{font-size:20px;margin-bottom:6px;}
+  .redeem-card .title{font-weight:600;font-size:13.5px;}
+  .redeem-card .desc{font-size:12px;color:var(--muted);margin-top:2px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;}
+  .tx{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--line);}
+  .tx:last-child{border-bottom:none;}
+  .tx .desc{font-size:13.5px;font-weight:500;}
+  .tx .when{font-size:12px;color:var(--muted);margin-top:1px;}
+  .tx .amt{font-weight:600;font-size:14px;}
+  .tx .amt.pos{color:var(--ok);}
+  .tx .amt.neg{color:var(--gold-dark);}
+  .empty{padding:26px 16px;text-align:center;color:var(--muted);font-size:13px;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(20,24,20,.45);display:none;align-items:flex-end;justify-content:center;z-index:10;}
+  .modal-backdrop.open{display:flex;}
+  .modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:22px 20px 26px;}
+  .modal h3{margin:0 0 14px;font-size:16px;}
+  .modal label{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px;}
+  .modal input,.modal select{width:100%;font:inherit;font-size:15px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#FAFAF7;}
+  .modal .row{display:flex;gap:10px;margin-top:20px;}
+  .btn{flex:1;padding:12px;border-radius:10px;border:none;font:inherit;font-weight:600;font-size:14px;cursor:pointer;}
+  .btn.cancel{background:#F0EFEA;color:var(--ink);}
+  .btn.confirm{background:var(--gold);color:#2A1E04;}
+  .btn.confirm:disabled{opacity:.5;}
+  .status-note{font-size:12.5px;padding:10px 12px;border-radius:10px;margin-top:14px;}
+  .status-note.ok{background:var(--ok-bg);color:var(--ok);}
+  .status-note.bad{background:#FBEAEA;color:#B33A3A;}
+  .refresh{display:block;margin:0 auto;background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;font-family:inherit;padding:6px;}
+  .gear{position:fixed;top:14px;right:calc(50% - 215px + 14px);font-size:16px;background:none;border:none;cursor:pointer;color:var(--muted);}
+  .login-screen{max-width:360px;margin:80px auto;padding:0 20px;text-align:center;}
+  .login-screen h1{font-size:20px;margin-bottom:6px;}
+  .login-screen p{color:var(--muted);font-size:13.5px;margin-bottom:22px;}
+  .login-screen input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;margin-bottom:12px;box-sizing:border-box;text-align:center;}
+  .login-screen .btn{width:100%;padding:13px;border-radius:12px;border:none;background:var(--teal);color:#fff;font:inherit;font-weight:600;font-size:15px;cursor:pointer;}
+  .login-screen .status{font-size:12.5px;margin-top:10px;min-height:16px;}
+  .login-screen .status.err{color:#B33A3A;}
+  .login-screen .status.ok{color:var(--ok);}
+  .login-screen .demo-note{font-size:11.5px;color:var(--muted);margin-top:16px;background:#F2EEE3;border-radius:8px;padding:8px 10px;}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <h1>My Earnings</h1>
+  <p>Enter your phone number to see your bandwidth-sharing balance.</p>
+  <div id="login-step-phone">
+    <input type="tel" id="login-phone" placeholder="+234 800 000 0000" />
+    <button class="btn" id="login-send-otp">Send code</button>
+  </div>
+  <div id="login-step-otp" style="display:none">
+    <input type="text" inputmode="numeric" id="login-otp" placeholder="6-digit code" maxlength="6" />
+    <button class="btn" id="login-verify-otp">Verify &amp; continue</button>
+  </div>
+  <div class="status" id="login-status"></div>
+  <div class="demo-note" id="demo-note" style="display:none"></div>
+</div>
+
+<div class="app" id="app-main" style="display:none">
+  <header>
+    <div class="greet">Your bandwidth earnings</div>
+  </header>
+
+  <div class="hero">
+    <div class="label">Available to redeem</div>
+    <div class="amount" id="balance">₦0<small>.00</small></div>
+    <div class="meta">
+      <div>Sessions shared<b id="session-count">0</b></div>
+      <div>Total earned<b id="total-earned">₦0</b></div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Redeem</h2>
+    <div class="redeem-options">
+      <button class="redeem-card" onclick="openRedeem('airtime')">
+        <div class="icon">📱</div>
+        <div class="title">Airtime</div>
+        <div class="desc">MTN, Airtel, Glo, 9mobile</div>
+      </button>
+      <button class="redeem-card" onclick="openRedeem('data')">
+        <div class="icon">📶</div>
+        <div class="title">Data bundle</div>
+        <div class="desc">Delivered instantly</div>
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Recent activity</h2>
+    <div class="card" id="activity-list"><div class="empty">Loading…</div></div>
+  </section>
+
+  <button class="refresh" onclick="loadAll()">↻ refresh</button>
+  <button class="refresh" onclick="logout()">sign out</button>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Redeem as airtime</h3>
+    <label>Amount (₦)</label>
+    <input type="number" id="redeem-amount" placeholder="500" />
+    <label>Network</label>
+    <select id="redeem-network">
+      <option>MTN</option><option>Airtel</option><option>Glo</option><option>9mobile</option>
+    </select>
+    <label>Phone number</label>
+    <input type="tel" id="redeem-phone" placeholder="080..." />
+    <div id="modal-status"></div>
+    <div class="row">
+      <button class="btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn confirm" id="confirm-btn" onclick="submitRedeem()">Redeem</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULTS = { cp: 'http://127.0.0.1:8080', pe: 'http://127.0.0.1:8081' };
+const cfg = {
+  cp: localStorage.getItem('wallet_cp') || DEFAULTS.cp,
+  pe: localStorage.getItem('wallet_pe') || DEFAULTS.pe,
+  token: localStorage.getItem('wallet_token') || '',
+  userId: localStorage.getItem('wallet_user_id') || '',
+};
+
+// --- Login flow: real OTP request/verify against the control plane ---
+let pendingPhone = '';
+
+document.getElementById('login-send-otp').addEventListener('click', async () => {
+  const phone = document.getElementById('login-phone').value.trim();
+  const statusEl = document.getElementById('login-status');
+  if (!phone) { statusEl.textContent = 'Enter a phone number.'; statusEl.className = 'status err'; return; }
+  statusEl.textContent = 'Sending…'; statusEl.className = 'status';
+  const result = await fetchJSON(cfg.cp + '/v1/auth/request-otp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ PhoneNumber: phone })
+  });
+  if (result.__error || result.error) { statusEl.textContent = result.error || 'Could not send code.'; statusEl.className = 'status err'; return; }
+  pendingPhone = phone;
+  document.getElementById('login-step-phone').style.display = 'none';
+  document.getElementById('login-step-otp').style.display = 'block';
+  statusEl.textContent = 'Code sent.'; statusEl.className = 'status ok';
+  // Reference-build-only: no real SMS provider is wired up, so the demo
+  // shows the code directly instead of it arriving by text. A production
+  // build removes this entirely — see control-plane's own comment on
+  // handleRequestOTP for the same honest caveat.
+  if (result.code_for_demo_only) {
+    const note = document.getElementById('demo-note');
+    note.style.display = 'block';
+    note.textContent = `Reference build (no SMS configured) — your code is ${result.code_for_demo_only}`;
+  }
+});
+
+document.getElementById('login-verify-otp').addEventListener('click', async () => {
+  const code = document.getElementById('login-otp').value.trim();
+  const statusEl = document.getElementById('login-status');
+  const result = await fetchJSON(cfg.cp + '/v1/auth/verify-otp', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ PhoneNumber: pendingPhone, Code: code })
+  });
+  if (result.__error || result.error) { statusEl.textContent = result.error || 'Incorrect code.'; statusEl.className = 'status err'; return; }
+  cfg.token = result.token;
+  cfg.userId = result.user_id;
+  localStorage.setItem('wallet_token', cfg.token);
+  localStorage.setItem('wallet_user_id', cfg.userId);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+  loadAll();
+});
+
+function logout(){
+  cfg.token = ''; cfg.userId = '';
+  localStorage.removeItem('wallet_token'); localStorage.removeItem('wallet_user_id');
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('login-step-phone').style.display = 'block';
+  document.getElementById('login-step-otp').style.display = 'none';
+}
+
+if (cfg.token && cfg.userId) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+}
+
+function naira(minor){ return '₦' + (minor/100).toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+async function fetchJSON(url, opts = {}){
+  try {
+    const headers = { ...(opts.headers || {}) };
+    if (cfg.token) headers['Authorization'] = `Bearer ${cfg.token}`;
+    const r = await fetch(url, { ...opts, headers });
+    if (r.status === 401 && cfg.token) { logout(); return { __error: 'session expired' }; }
+    return await r.json();
+  } catch(e){ return { __error: e.message }; }
+}
+
+async function loadWallet(){
+  const w = await fetchJSON(cfg.cp + '/v1/wallet/' + cfg.userId);
+  const [whole, cents] = naira(w.balance_minor_units || 0).replace('₦','').split('.');
+  document.getElementById('balance').innerHTML = '₦' + whole + '<small>.' + (cents||'00') + '</small>';
+}
+
+async function loadActivity(){
+  const history = await fetchJSON(cfg.cp + '/v1/ledger/history/' + cfg.userId);
+  const list = document.getElementById('activity-list');
+  if (!Array.isArray(history) || history.length === 0){ list.innerHTML = '<div class="empty">No activity yet. Share some bandwidth to start earning.</div>'; return; }
+
+  let sessionCount = 0, totalEarned = 0;
+  history.forEach(e => { if (e.ReferenceType === 'bandwidth_earning' && e.Direction === 'credit'){ sessionCount++; totalEarned += e.AmountMinorUnits; } });
+  document.getElementById('session-count').textContent = sessionCount;
+  document.getElementById('total-earned').textContent = naira(totalEarned);
+
+  list.innerHTML = history.slice(0, 25).map(e => {
+    const isCredit = e.Direction === 'credit';
+    const label = e.ReferenceType === 'bandwidth_earning' ? 'Bandwidth shared'
+                : e.ReferenceType === 'payout' ? 'Redeemed'
+                : e.ReferenceType === 'payout_reversal' ? 'Redemption refunded'
+                : e.ReferenceType;
+    const when = new Date(e.CreatedAt).toLocaleString('en-NG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    return `<div class="tx">
+      <div><div class="desc">${label}</div><div class="when">${when}</div></div>
+      <div class="amt ${isCredit ? 'pos':'neg'}">${isCredit?'+':'−'}${naira(e.AmountMinorUnits)}</div>
+    </div>`;
+  }).join('');
+}
+
+function loadAll(){ loadWallet(); loadActivity(); }
+
+let redeemType = 'airtime';
+function openRedeem(type){
+  redeemType = type;
+  document.getElementById('modal-title').textContent = type === 'airtime' ? 'Redeem as airtime' : 'Redeem as data bundle';
+  document.getElementById('modal-status').innerHTML = '';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+async function submitRedeem(){
+  const nairaAmount = parseFloat(document.getElementById('redeem-amount').value);
+  const network = document.getElementById('redeem-network').value;
+  const phone = document.getElementById('redeem-phone').value.trim();
+  const statusEl = document.getElementById('modal-status');
+  const btn = document.getElementById('confirm-btn');
+
+  if (!nairaAmount || nairaAmount <= 0 || !phone){
+    statusEl.innerHTML = '<div class="status-note bad">Enter an amount and phone number.</div>';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Processing…';
+  const result = await fetchJSON(cfg.pe + '/v1/payouts', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ amount: Math.round(nairaAmount*100), rail: 'vtu', phone, network }) // userId comes from the Bearer token server-side now
+  });
+  btn.disabled = false; btn.textContent = 'Redeem';
+
+  if (result.__error || (result.error)) {
+    statusEl.innerHTML = `<div class="status-note bad">${result.error || 'Could not reach the payout service.'}</div>`;
+    return;
+  }
+  if (result.status === 'success'){
+    statusEl.innerHTML = `<div class="status-note ok">Sent! ₦${nairaAmount} ${redeemType} is on its way to ${phone}.</div>`;
+    loadAll();
+    setTimeout(closeModal, 1600);
+  } else if (result.status === 'failed'){
+    statusEl.innerHTML = `<div class="status-note bad">Couldn't complete this redemption — your balance has been restored. (${result.failureReason || ''})</div>`;
+    loadAll();
+  } else {
+    statusEl.innerHTML = `<div class="status-note ok">Request received — processing.</div>`;
+    loadAll();
+  }
+}
+
+if (cfg.token && cfg.userId) loadAll(); // otherwise the login screen is shown instead — see above
+setInterval(() => { if (cfg.token && cfg.userId) loadAll(); }, 10000);
+</script>
+</body>
+</html>

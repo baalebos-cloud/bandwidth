@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bandwidth Platform</string>
+    <string name="status_running">Sharing active</string>
+    <string name="status_stopped">Not sharing</string>
+    <string name="start_sharing">Start sharing</string>
+    <string name="stop_sharing">Stop sharing</string>
+</resources>

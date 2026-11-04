@@ -1,0 +1,25 @@
+# Secrets: NEVER commit these
+.env
+*.pem
+*.key
+*_privkey
+
+# Build artifacts (rebuilt by scripts/setup.sh)
+control-plane/control-plane
+gateway/gateway
+client/rust-relay/target/
+wireguard/wireguard-go-bin
+
+# Python
+fraud-service/venv/
+__pycache__/
+*.pyc
+fraud-service/fraud_model.joblib
+
+# Node / logs / noise
+node_modules/
+*.log
+frontend/tests/example-screenshots/
+.DS_Store
+.vscode/
+.idea/

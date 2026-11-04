@@ -1,0 +1,15 @@
+{
+  "version": "v1-synthetic-2026-09",
+  "feature_order": [
+    "byte_mismatch_ratio",
+    "node_trust_score",
+    "node_age_hours_log",
+    "sessions_last_hour",
+    "gateway_bytes_log",
+    "is_datacenter_asn_signal"
+  ],
+  "test_roc_auc": 0.9991,
+  "trained_on": "synthetic",
+  "n_train": 16000,
+  "n_test": 4000
+}

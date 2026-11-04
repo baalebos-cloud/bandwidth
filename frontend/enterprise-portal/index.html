@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Developer Console — Bandwidth Platform</title>
+<style>
+  :root{
+    --bg:#FAFAFA; --panel:#FFFFFF; --ink:#14161A; --muted:#6B6E76;
+    --line:#E5E5E8; --primary:#4C3AA6; --primary-ink:#EFEBFA;
+    --ok:#1F8A5F; --ok-bg:#E7F5EE; --warn:#B8791F; --warn-bg:#FBF0DF; --bad:#B3423A; --bad-bg:#FBEAEA;
+    --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;}
+  header{border-bottom:1px solid var(--line);background:var(--panel);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;}
+  header .brand{font-weight:600;font-size:15px;}
+  header .brand span{color:var(--primary);}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 28px 60px;}
+  .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:500;}
+  .pill.pending{background:var(--warn-bg);color:var(--warn);}
+  .pill.approved{background:var(--ok-bg);color:var(--ok);}
+  .pill.rejected{background:var(--bad-bg);color:var(--bad);}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:22px;margin-bottom:20px;}
+  .card h2{font-size:14px;margin:0 0 4px;}
+  .card .desc{color:var(--muted);font-size:13px;margin:0 0 16px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .stat{border:1px solid var(--line);border-radius:8px;padding:14px 16px;}
+  .stat .label{font-size:12px;color:var(--muted);}
+  .stat .value{font-size:22px;font-weight:600;margin-top:4px;}
+  .keybox{background:#0F1117;color:#D7D9E0;border-radius:8px;padding:14px 16px;font-family:var(--mono);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .keybox button{background:#232636;color:#fff;border:none;border-radius:6px;padding:6px 10px;font:inherit;font-size:12px;cursor:pointer;}
+  pre{background:#0F1117;color:#D7D9E0;border-radius:8px;padding:16px;font-family:var(--mono);font-size:12.5px;overflow-x:auto;line-height:1.6;margin:0;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;}
+  .field input,.field textarea{width:100%;font:inherit;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#FCFCFD;}
+  .btn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 18px;font:inherit;font-weight:500;font-size:13.5px;cursor:pointer;}
+  .btn:disabled{opacity:.5;}
+  .btn.ghost{background:none;color:var(--primary);border:1px solid var(--line);}
+  .banner{border-radius:8px;padding:12px 14px;font-size:13px;margin-bottom:20px;}
+  .banner.pending{background:var(--warn-bg);color:var(--warn);}
+  .banner.approved{background:var(--ok-bg);color:var(--ok);}
+  .banner.rejected{background:var(--bad-bg);color:var(--bad);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;padding:8px 0;border-bottom:1px solid var(--line);}
+  td{padding:9px 0;border-bottom:1px solid var(--line);}
+  .empty{color:var(--muted);padding:16px 0;font-size:13px;}
+  #signup-view, #console-view{display:none;}
+  .switcher{font-size:12.5px;color:var(--muted);margin-top:10px;}
+  .switcher a{color:var(--primary);cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Bandwidth<span>Platform</span> — Developer Console</div>
+  <div class="switcher" id="header-switch"></div>
+</header>
+
+<div class="wrap">
+
+  <div id="signup-view">
+    <div class="card">
+      <h2>Get API access</h2>
+      <p class="desc">Every request goes through KYB review before your key goes live — enterprise traffic is never relayed against a pending or rejected account.</p>
+      <div class="field"><label>Company name</label><input id="su-name" placeholder="Acme Scrapers Ltd" /></div>
+      <div class="field"><label>Declared use case</label><textarea id="su-usecase" rows="3" placeholder="What will you use bandwidth access for?"></textarea></div>
+      <button class="btn" id="su-submit">Submit for review</button>
+    </div>
+    <div class="switcher">Already registered? <a onclick="showConsoleLookup()">Sign in with your API key</a></div>
+    <div id="lookup-box" style="display:none" class="card">
+      <h2>Sign in</h2>
+      <p class="desc">Your API key was shown once when you registered — it's your login credential now, not just a routing key.</p>
+      <div class="field"><label>API key</label><input id="lookup-key" placeholder="sk_test_..." /></div>
+      <button class="btn ghost" id="lookup-submit">Continue</button>
+    </div>
+  </div>
+
+  <div id="console-view">
+    <div id="kyb-banner"></div>
+
+    <div class="card">
+      <h2>Account</h2>
+      <div class="grid2">
+        <div class="stat"><div class="label">Company</div><div class="value" id="c-name" style="font-size:16px;">—</div></div>
+        <div class="stat"><div class="label">Tier / daily rate limit</div><div class="value" id="c-tier" style="font-size:16px;">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>API key</h2>
+      <p class="desc">Live only once your account shows Approved above.</p>
+      <div class="keybox"><span id="c-apikey">sk_test_••••••••••••</span><button onclick="copyKey()">Copy</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Quickstart</h2>
+      <p class="desc">Route a request through the gateway once your key is live:</p>
+      <pre id="c-curl">curl -x https://gateway.bandwidthplatform.example:9443 \
+  -H "Authorization: Bearer sk_test_..." \
+  https://example.com</pre>
+    </div>
+
+    <div class="card">
+      <h2>Recent sessions</h2>
+      <p class="desc">Sessions routed against your account, most recent first.</p>
+      <table>
+        <thead><tr><th>Session</th><th>Status</th><th>Gateway-confirmed bytes</th></tr></thead>
+        <tbody id="sessions-body"><tr><td colspan="3" class="empty">No sessions yet.</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="switcher"><a onclick="logout()">Switch account</a></div>
+  </div>
+
+</div>
+
+<script>
+const DEFAULTS = { cp: 'http://127.0.0.1:8080' };
+const cfg = { cp: localStorage.getItem('ent_cp') || DEFAULTS.cp };
+let apiKey = localStorage.getItem('ent_api_key') || null;
+
+async function fetchJSON(url, opts = {}){
+  try {
+    const headers = { ...(opts.headers || {}) };
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+    const r = await fetch(url, { ...opts, headers });
+    return { status: r.status, body: await r.json() };
+  } catch(e){ return { status: 0, body: { error: e.message } }; }
+}
+
+function showSignup(){ document.getElementById('signup-view').style.display='block'; document.getElementById('console-view').style.display='none'; }
+function showConsole(){ document.getElementById('signup-view').style.display='none'; document.getElementById('console-view').style.display='block'; }
+function showConsoleLookup(){ document.getElementById('lookup-box').style.display='block'; }
+function logout(){ apiKey = null; localStorage.removeItem('ent_api_key'); document.getElementById('header-switch').textContent=''; showSignup(); }
+
+document.getElementById('su-submit').addEventListener('click', async () => {
+  const name = document.getElementById('su-name').value.trim();
+  const useCase = document.getElementById('su-usecase').value.trim();
+  if (!name || !useCase) { alert('Company name and use case are required.'); return; }
+  const { body } = await fetchJSON(cfg.cp + '/v1/enterprise/register', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ CompanyName: name, UseCase: useCase })
+  });
+  if (body.APIKey){
+    apiKey = body.APIKey;
+    localStorage.setItem('ent_api_key', apiKey);
+    alert('Save this API key somewhere safe — it is shown in full only this once: ' + apiKey);
+    renderConsole();
+  }
+});
+
+document.getElementById('lookup-submit').addEventListener('click', () => {
+  const key = document.getElementById('lookup-key').value.trim();
+  if (!key) return;
+  apiKey = key;
+  localStorage.setItem('ent_api_key', apiKey);
+  renderConsole();
+});
+
+function copyKey(){
+  const key = document.getElementById('c-apikey').textContent;
+  navigator.clipboard.writeText(key).catch(()=>{});
+}
+
+async function renderConsole(){
+  if (!apiKey){ showSignup(); return; }
+  // whoami resolves the company from the API key itself — the key IS the
+  // credential now, not a client ID typed in alongside it.
+  const { status, body: c } = await fetchJSON(cfg.cp + '/v1/enterprise/whoami');
+  if (status !== 200){ alert('API key not recognized.'); logout(); return; }
+
+  showConsole();
+  document.getElementById('header-switch').textContent = c.CompanyName;
+
+  const banner = document.getElementById('kyb-banner');
+  if (c.KYBStatus === 'pending'){
+    banner.innerHTML = `<div class="banner pending"><span class="pill pending">Pending review</span> &nbsp;Your API key will activate once KYB review is complete. This usually reflects manual review in the ops queue.</div>`;
+  } else if (c.KYBStatus === 'approved'){
+    banner.innerHTML = `<div class="banner approved"><span class="pill approved">Approved</span> &nbsp;Your key is live — sessions will be issued for your requests.</div>`;
+  } else {
+    banner.innerHTML = `<div class="banner rejected"><span class="pill rejected">Rejected</span> &nbsp;${c.RejectionReason || 'Contact support for details.'}</div>`;
+  }
+
+  document.getElementById('c-name').textContent = c.CompanyName;
+  document.getElementById('c-tier').textContent = (c.RateLimitGBDay || 5) + ' GB/day (' + (c.Tier || 'trial') + ')';
+  document.getElementById('c-apikey').textContent = c.KYBStatus === 'approved' ? apiKey : 'sk_test_•••• (inactive until approved)';
+  document.getElementById('c-curl').textContent =
+`curl -x https://gateway.bandwidthplatform.example:9443 \\
+  -H "Authorization: Bearer ${c.KYBStatus === 'approved' ? apiKey : 'sk_test_...'}" \\
+  https://example.com`;
+
+  // Scoped to this enterprise only — the portal never had, and should
+  // never gain, visibility into other enterprises' traffic.
+  const { body: sessions } = await fetchJSON(cfg.cp + '/v1/sessions/mine');
+  const mine = Array.isArray(sessions) ? sessions : [];
+  const tbody = document.getElementById('sessions-body');
+  tbody.innerHTML = mine.length ? mine.map(s => `<tr><td>${s.SessionID.slice(0,18)}…</td><td>${s.Status}</td><td>${s.GatewayConfirmedBytes ?? 0}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="empty">No sessions yet.</td></tr>';
+}
+
+if (apiKey) renderConsole(); else showSignup();
+setInterval(() => { if (apiKey) renderConsole(); }, 8000);
+</script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ops Console — Bandwidth Platform</title>
+<style>
+  :root{
+    --bg:#F6F6F4; --panel:#FFFFFF; --ink:#1A1D1F; --muted:#6B6F6C;
+    --line:#DEDFDA; --accent:#1E3A5F; --accent-ink:#EAF0F7;
+    --ok:#2F7B4F; --ok-bg:#E7F3EC; --warn:#B8791F; --warn-bg:#FBF0DF;
+    --bad:#B33A3A; --bad-bg:#FBEAEA; --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;}
+  a{color:inherit;}
+  .shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+  nav{background:var(--accent);color:var(--accent-ink);padding:20px 0;}
+  nav .brand{padding:0 20px 20px;font-weight:600;font-size:15px;border-bottom:1px solid rgba(255,255,255,.15);margin-bottom:8px;}
+  nav .brand small{display:block;font-weight:400;opacity:.65;font-size:12px;margin-top:2px;}
+  nav button{display:block;width:100%;text-align:left;background:none;border:none;color:inherit;padding:10px 20px;font:inherit;cursor:pointer;opacity:.75;border-left:3px solid transparent;}
+  nav button.active{opacity:1;background:rgba(255,255,255,.08);border-left-color:#fff;}
+  nav button:hover{opacity:1;}
+  main{padding:28px 36px;max-width:1180px;}
+  h1{font-size:19px;margin:0 0 4px;font-weight:600;}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:13px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-bottom:20px;}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-weight:600;font-size:12px;color:var(--muted);text-transform:none;padding:9px 14px;border-bottom:1px solid var(--line);background:#FBFBFA;}
+  td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  .mono{font-family:var(--mono);font-size:12.5px;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:500;}
+  .pill.pending{background:var(--warn-bg);color:var(--warn);}
+  .pill.approved,.pill.success,.pill.eligible{background:var(--ok-bg);color:var(--ok);}
+  .pill.rejected,.pill.failed,.pill.banned{background:var(--bad-bg);color:var(--bad);}
+  .pill.open,.pill.finalized{background:#EDEEEC;color:var(--muted);}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:4px;padding:5px 12px;font:inherit;font-size:12.5px;cursor:pointer;color:var(--ink);}
+  .btn:hover{border-color:#b9bbb5;}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .btn.danger{color:var(--bad);}
+  .btn+.btn{margin-left:6px;}
+  .empty{padding:32px 14px;text-align:center;color:var(--muted);}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .toolbar h2{font-size:14px;margin:0;font-weight:600;}
+  .toolbar .count{color:var(--muted);font-size:12.5px;}
+  .trust-bar{width:60px;height:5px;background:#EAEAE6;border-radius:3px;display:inline-block;vertical-align:middle;margin-right:6px;overflow:hidden;}
+  .trust-bar i{display:block;height:100%;background:var(--ok);}
+  .trust-bar.low i{background:var(--bad);}
+  .trust-bar.mid i{background:var(--warn);}
+  .refresh{color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;padding:0;}
+  .banner{background:var(--accent-ink);border:1px solid #C7D6E6;border-radius:4px;padding:10px 14px;font-size:12.5px;color:var(--accent);margin-bottom:18px;}
+  input,textarea{font:inherit;border:1px solid var(--line);border-radius:4px;padding:6px 9px;width:100%;}
+  .field{margin-bottom:10px;}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;}
+</style>
+</head>
+<body>
+<div id="login-gate" style="max-width:360px;margin:80px auto;font-family:'IBM Plex Sans',sans-serif;">
+  <h2 style="font-size:16px;">Ops Console login</h2>
+  <p style="color:#6B6F6C;font-size:13px;">Enter the admin API key configured on the control plane (<code>ADMIN_API_KEY</code>).</p>
+  <input id="login-key" type="password" placeholder="Admin API key" style="width:100%;padding:8px 10px;border:1px solid #DEDFDA;border-radius:4px;font:inherit;margin-bottom:8px;box-sizing:border-box;" />
+  <div id="login-error" style="color:#B33A3A;font-size:12.5px;margin-bottom:8px;"></div>
+  <button id="login-submit" style="background:#1E3A5F;color:#fff;border:none;border-radius:4px;padding:8px 16px;font:inherit;cursor:pointer;">Sign in</button>
+</div>
+
+<div class="shell" id="app-shell" style="display:none">
+  <nav>
+    <div class="brand">Ops Console<small>Bandwidth Platform</small></div>
+    <button data-view="queue" class="active">KYB Queue</button>
+    <button data-view="nodes">Nodes</button>
+    <button data-view="sessions">Sessions</button>
+    <button data-view="payouts">Payouts</button>
+    <button data-view="settings">API base</button>
+  </nav>
+  <main>
+    <div id="view-queue">
+      <div class="toolbar"><h1>Enterprise KYB queue</h1></div>
+      <p class="sub">No session is issued to an enterprise client until it is approved here — this is a hard gate enforced by the control plane, not a suggestion.</p>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Company</th><th>Declared use case</th><th>ID</th><th>Status</th><th></th></tr></thead>
+          <tbody id="queue-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-nodes" style="display:none">
+      <div class="toolbar"><h1>Registered nodes</h1></div>
+      <p class="sub">Trust score drives session eligibility. Nodes flagged as datacenter-ASN or banned are never issued a session, regardless of KYB status on the other side.</p>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Node ID</th><th>User</th><th>Status</th><th>Trust score</th><th>Datacenter ASN?</th></tr></thead>
+          <tbody id="nodes-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-sessions" style="display:none">
+      <div class="toolbar"><h1>Bandwidth sessions</h1></div>
+      <p class="sub">gateway_confirmed_bytes is the only figure ever paid against. client_reported_bytes is shown purely as the fraud-comparison signal.</p>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Session</th><th>Node</th><th>Enterprise</th><th>Status</th><th>Gateway bytes</th><th>Client bytes</th><th>Fraud score</th></tr></thead>
+          <tbody id="sessions-body"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-payouts" style="display:none">
+      <div class="toolbar"><h1>Payout reconciliation</h1></div>
+      <p class="sub">Every row here is a real orchestrator run — including any that hit a simulated ambiguous-timeout and recovered via requery instead of double-paying.</p>
+      <div class="panel">
+        <table>
+          <thead><tr><th>Payout ID</th><th>User</th><th>Amount</th><th>Rail</th><th>Provider</th><th>Status</th></tr></thead>
+          <tbody id="payouts-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-settings" style="display:none">
+      <h1>API endpoints</h1>
+      <p class="sub">Point this console at your running services. Defaults match the local demo setup.</p>
+      <div class="panel" style="padding:18px;">
+        <div class="field"><label>Control-plane base URL</label><input id="cfg-cp" /></div>
+        <div class="field"><label>Payout-engine base URL</label><input id="cfg-pe" /></div>
+        <button class="btn primary" id="cfg-save">Save</button>
+        <button class="btn" id="cfg-logout" style="margin-left:8px;">Sign out</button>
+      </div>
+    </div>
+
+    <button class="refresh" id="refresh-btn">↻ refresh all data</button>
+  </main>
+</div>
+
+<script>
+const DEFAULTS = { cp: 'http://127.0.0.1:8080', pe: 'http://127.0.0.1:8081' };
+const cfg = {
+  cp: localStorage.getItem('ops_cp') || DEFAULTS.cp,
+  pe: localStorage.getItem('ops_pe') || DEFAULTS.pe,
+  adminKey: localStorage.getItem('ops_admin_key') || '',
+};
+
+function fmtNaira(minorUnits){ return '₦' + (minorUnits/100).toFixed(2); }
+function truncate(s, n=18){ return s && s.length > n ? s.slice(0, n) + '…' : s; }
+function pill(status){ return `<span class="pill ${status}">${status}</span>`; }
+
+async function fetchJSON(url, opts = {}){
+  try {
+    const headers = { ...(opts.headers || {}), 'Authorization': `Bearer ${cfg.adminKey}` };
+    const res = await fetch(url, { ...opts, headers });
+    if (res.status === 401) { doLogout('Session expired or key rejected — sign in again.'); return { __error: 'unauthorized' }; }
+    return await res.json();
+  } catch(e) {
+    return { __error: e.message };
+  }
+}
+
+function doLogout(message){
+  cfg.adminKey = '';
+  localStorage.removeItem('ops_admin_key');
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('login-gate').style.display = 'block';
+  if (message) document.getElementById('login-error').textContent = message;
+}
+
+document.getElementById('login-submit').addEventListener('click', async () => {
+  const key = document.getElementById('login-key').value.trim();
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!key) { errEl.textContent = 'Enter a key.'; return; }
+  // Verify by calling a real admin-protected endpoint rather than just
+  // trusting whatever was typed.
+  const res = await fetch(cfg.cp + '/v1/enterprise', { headers: { 'Authorization': `Bearer ${key}` } });
+  if (res.status !== 200) { errEl.textContent = 'Key rejected by the control plane.'; return; }
+  cfg.adminKey = key;
+  localStorage.setItem('ops_admin_key', key);
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'grid';
+  loadAll();
+});
+
+if (cfg.adminKey) {
+  document.getElementById('login-gate').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'grid';
+}
+
+async function loadQueue(){
+  const clients = await fetchJSON(cfg.cp + '/v1/enterprise');
+  const body = document.getElementById('queue-body');
+  if (!Array.isArray(clients) || clients.length === 0){ body.innerHTML = '<tr><td colspan="5" class="empty">No enterprise clients registered yet.</td></tr>'; return; }
+  body.innerHTML = clients.map(c => `
+    <tr>
+      <td>${c.CompanyName}</td>
+      <td>${c.DeclaredUseCase || '—'}</td>
+      <td class="mono">${truncate(c.ID)}</td>
+      <td>${pill(c.KYBStatus)}</td>
+      <td>${c.KYBStatus === 'pending' ? `
+        <button class="btn primary" onclick="approve('${c.ID}')">Approve</button>
+        <button class="btn danger" onclick="reject('${c.ID}')">Reject</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function approve(id){
+  await fetchJSON(cfg.cp + '/v1/enterprise/approve', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ID: id }) });
+  loadQueue();
+}
+async function reject(id){
+  const reason = prompt('Rejection reason (shown only internally):', 'Declared use case not eligible for pilot');
+  if (reason === null) return;
+  await fetchJSON(cfg.cp + '/v1/enterprise/reject', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ID: id, Reason: reason }) });
+  loadQueue();
+}
+
+async function loadNodes(){
+  const nodes = await fetchJSON(cfg.cp + '/v1/nodes');
+  const body = document.getElementById('nodes-body');
+  if (!Array.isArray(nodes) || nodes.length === 0){ body.innerHTML = '<tr><td colspan="5" class="empty">No nodes registered yet.</td></tr>'; return; }
+  body.innerHTML = nodes.map(n => {
+    const trustClass = n.TrustScore >= 60 ? '' : n.TrustScore >= 40 ? 'mid' : 'low';
+    return `<tr>
+      <td class="mono">${truncate(n.ID)}</td>
+      <td class="mono">${truncate(n.UserID)}</td>
+      <td>${pill(n.Status)}</td>
+      <td><span class="trust-bar ${trustClass}"><i style="width:${Math.max(0,Math.min(100,n.TrustScore))}%"></i></span>${n.TrustScore.toFixed(1)}</td>
+      <td>${n.IsDatacenterASN ? pill('rejected').replace('rejected','flagged') : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadSessions(){
+  const sessions = await fetchJSON(cfg.cp + '/v1/sessions/list');
+  const body = document.getElementById('sessions-body');
+  if (!Array.isArray(sessions) || sessions.length === 0){ body.innerHTML = '<tr><td colspan="7" class="empty">No sessions yet.</td></tr>'; return; }
+  body.innerHTML = sessions.map(s => {
+    const scoreLabel = (s.MLFraudScore === null || s.MLFraudScore === undefined) ? '<span style="color:var(--muted)">unscored</span>'
+      : `<span class="pill ${s.MLFraudFlag ? 'rejected' : 'approved'}">${(s.MLFraudScore*100).toFixed(1)}%</span>`;
+    return `<tr>
+      <td class="mono">${truncate(s.SessionID)}</td>
+      <td class="mono">${truncate(s.NodeID)}</td>
+      <td class="mono">${truncate(s.EnterpriseClientID)}</td>
+      <td>${pill(s.Status)}</td>
+      <td class="mono">${s.GatewayConfirmedBytes ?? 0}</td>
+      <td class="mono">${s.ClientReportedBytes ?? 0}</td>
+      <td>${scoreLabel}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadPayouts(){
+  const payouts = await fetchJSON(cfg.pe + '/v1/payouts');
+  const body = document.getElementById('payouts-body');
+  if (!Array.isArray(payouts) || payouts.length === 0){ body.innerHTML = '<tr><td colspan="6" class="empty">No payouts yet, or the payout-engine is not reachable at ' + cfg.pe + '.</td></tr>'; return; }
+  body.innerHTML = payouts.map(p => `
+    <tr>
+      <td class="mono">${truncate(p.id)}</td>
+      <td class="mono">${truncate(p.userId)}</td>
+      <td>${fmtNaira(p.amount)}</td>
+      <td>${p.rail}</td>
+      <td>${p.provider || '—'}</td>
+      <td>${pill(p.status)}</td>
+    </tr>`).join('');
+}
+
+function loadAll(){ loadQueue(); loadNodes(); loadSessions(); loadPayouts(); }
+
+document.querySelectorAll('nav button[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button[data-view]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    ['queue','nodes','sessions','payouts','settings'].forEach(v => {
+      document.getElementById('view-' + v).style.display = (v === btn.dataset.view) ? 'block' : 'none';
+    });
+  });
+});
+
+document.getElementById('refresh-btn').addEventListener('click', loadAll);
+document.getElementById('cfg-cp').value = cfg.cp;
+document.getElementById('cfg-pe').value = cfg.pe;
+document.getElementById('cfg-save').addEventListener('click', () => {
+  cfg.cp = document.getElementById('cfg-cp').value.trim() || DEFAULTS.cp;
+  cfg.pe = document.getElementById('cfg-pe').value.trim() || DEFAULTS.pe;
+  localStorage.setItem('ops_cp', cfg.cp);
+  localStorage.setItem('ops_pe', cfg.pe);
+  loadAll();
+});
+document.getElementById('cfg-logout')?.addEventListener('click', () => doLogout());
+
+if (cfg.adminKey) loadAll(); // otherwise the login gate is shown instead — see above
+setInterval(() => { if (cfg.adminKey) loadAll(); }, 8000);
+</script>
+</body>
+</html>
